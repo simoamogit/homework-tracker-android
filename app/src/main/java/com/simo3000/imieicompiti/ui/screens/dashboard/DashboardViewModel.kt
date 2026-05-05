@@ -9,14 +9,17 @@ import com.simo3000.imieicompiti.data.local.TokenStore
 import com.simo3000.imieicompiti.data.repository.TaskRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 data class DashboardUiState(
-    val isLoading: Boolean       = true,
-    val error: String?           = null,
-    val tasks: List<Task>        = emptyList(),
+    val isLoading: Boolean = true,
+    val error: String? = null,
+    val tasks: List<Task> = emptyList(),
     val hideCompletedDays: Boolean = false,
-    val searchQuery: String      = ""
+    val searchQuery: String = "",
+    val userEmail: String? = null
 )
 
 class DashboardViewModel(application: Application) : AndroidViewModel(application) {
@@ -27,8 +30,10 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
         "Bearer ${tokenStore.getToken()}"
     )
 
-    private val _uiState = MutableStateFlow(DashboardUiState())
-    val uiState: StateFlow<DashboardUiState> = _uiState
+    private val _uiState = MutableStateFlow(
+        DashboardUiState(userEmail = tokenStore.getEmail())
+    )
+    val uiState: StateFlow<DashboardUiState> = _uiState.asStateFlow()
 
     init {
         loadTasks()
@@ -36,61 +41,79 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
 
     fun loadTasks() {
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
-            val result = repository.getTasks()
-            _uiState.value = if (result.isSuccess) {
-                _uiState.value.copy(isLoading = false, tasks = result.getOrDefault(emptyList()))
-            } else {
-                _uiState.value.copy(isLoading = false, error = result.exceptionOrNull()?.message)
-            }
+            _uiState.update { it.copy(isLoading = true, error = null) }
+            repository.getTasks()
+                .onSuccess { tasks ->
+                    _uiState.update { it.copy(isLoading = false, tasks = tasks) }
+                }
+                .onFailure { error ->
+                    _uiState.update { it.copy(isLoading = false, error = error.message) }
+                }
         }
     }
 
     fun toggleTask(taskId: String, completed: Boolean) {
         viewModelScope.launch {
-            val result = repository.toggleTask(taskId, completed)
-            if (result.isSuccess) {
-                val updated = result.getOrNull()!!
-                _uiState.value = _uiState.value.copy(
-                    tasks = _uiState.value.tasks.map {
-                        if (it.id == taskId) updated else it
+            repository.toggleTask(taskId, completed)
+                .onSuccess { updatedTask ->
+                    _uiState.update { state ->
+                        state.copy(
+                            tasks = state.tasks.map { if (it.id == taskId) updatedTask else it }
+                        )
                     }
-                )
-            }
+                }
+                .onFailure { error ->
+                    _uiState.update { it.copy(error = error.message) }
+                }
         }
     }
 
     fun deleteTask(taskId: String) {
         viewModelScope.launch {
-            val result = repository.deleteTask(taskId)
-            if (result.isSuccess) {
-                _uiState.value = _uiState.value.copy(
-                    tasks = _uiState.value.tasks.filter { it.id != taskId }
-                )
-            }
+            repository.deleteTask(taskId)
+                .onSuccess {
+                    _uiState.update { state ->
+                        state.copy(tasks = state.tasks.filter { it.id != taskId })
+                    }
+                }
+                .onFailure { error ->
+                    _uiState.update { it.copy(error = error.message) }
+                }
         }
     }
 
-    fun onTaskAdded(task: Task) {
-        _uiState.value = _uiState.value.copy(
-            tasks = _uiState.value.tasks + task
-        )
+    fun createTask(date: String, subject: String, category: String, description: String) {
+        viewModelScope.launch {
+            repository.createTask(date, subject, category, description)
+                .onSuccess { newTask ->
+                    _uiState.update { it.copy(tasks = it.tasks + newTask) }
+                }
+                .onFailure { error ->
+                    _uiState.update { it.copy(error = error.message) }
+                }
+        }
     }
 
-    fun onTaskUpdated(task: Task) {
-        _uiState.value = _uiState.value.copy(
-            tasks = _uiState.value.tasks.map { if (it.id == task.id) task else it }
-        )
+    fun updateTask(id: String, date: String, subject: String, category: String, description: String) {
+        viewModelScope.launch {
+            repository.updateTask(id, date, subject, category, description)
+                .onSuccess { updatedTask ->
+                    _uiState.update { state ->
+                        state.copy(tasks = state.tasks.map { if (it.id == id) updatedTask else it })
+                    }
+                }
+                .onFailure { error ->
+                    _uiState.update { it.copy(error = error.message) }
+                }
+        }
     }
 
     fun toggleHideCompletedDays() {
-        _uiState.value = _uiState.value.copy(
-            hideCompletedDays = !_uiState.value.hideCompletedDays
-        )
+        _uiState.update { it.copy(hideCompletedDays = !it.hideCompletedDays) }
     }
 
     fun setSearchQuery(query: String) {
-        _uiState.value = _uiState.value.copy(searchQuery = query)
+        _uiState.update { it.copy(searchQuery = query) }
     }
 
     fun getEmail() = tokenStore.getEmail()

@@ -16,6 +16,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.simo3000.imieicompiti.data.api.Task
 import com.simo3000.imieicompiti.ui.components.DaySection
 import java.time.LocalDate
+import com.simo3000.imieicompiti.ui.components.AddTaskDialog
+import com.simo3000.imieicompiti.ui.components.EditTaskDialog
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -263,26 +265,23 @@ fun DashboardScreen(
         }
     }
 
-    // Dialog aggiunta — placeholder, lo completiamo Step 5
     if (showAddDialog) {
-        AlertDialog(
-            onDismissRequest = { showAddDialog = false },
-            title = { Text("Nuovo compito") },
-            text  = { Text("Form aggiunta — Step 5") },
-            confirmButton = {
-                TextButton(onClick = { showAddDialog = false }) { Text("Chiudi") }
+        AddTaskDialog(
+            onDismiss = { showAddDialog = false },
+            onConfirm = { date, subject, category, description ->
+                viewModel.createTask(date, subject, category, description)
             }
         )
     }
 
     // Dialog modifica — placeholder, lo completiamo Step 5
     taskToEdit?.let { task ->
-        AlertDialog(
-            onDismissRequest = { taskToEdit = null },
-            title = { Text("Modifica compito") },
-            text  = { Text("Form modifica — Step 5") },
-            confirmButton = {
-                TextButton(onClick = { taskToEdit = null }) { Text("Chiudi") }
+        EditTaskDialog(
+            task      = task,
+            onDismiss = { taskToEdit = null },
+            onConfirm = { date, subject, category, description ->
+                viewModel.updateTask(task.id, date, subject, category, description)
+                taskToEdit = null
             }
         )
     }
