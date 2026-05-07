@@ -23,6 +23,8 @@ import com.simo3000.imieicompiti.ui.components.EditTaskDialog
 @Composable
 fun DashboardScreen(
     onLogout: () -> Unit,
+    onNavigateToArchive: () -> Unit = {},
+    onNavigateToSettings: () -> Unit = {},
     viewModel: DashboardViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -64,6 +66,13 @@ fun DashboardScreen(
             TopAppBar(
                 title = { },
                 actions = {
+                    IconButton(onClick = onNavigateToArchive) {
+                        Icon(
+                            imageVector = Icons.Default.Archive,
+                            contentDescription = "Archivio",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                     // Occhio
                     IconButton(onClick = { viewModel.toggleHideCompletedDays() }) {
                         Icon(
@@ -104,7 +113,7 @@ fun DashboardScreen(
                             DropdownMenuItem(
                                 text = { Text("Impostazioni") },
                                 leadingIcon = { Icon(Icons.Default.Settings, null) },
-                                onClick = { showUserMenu = false /* Step 7 */ }
+                                onClick = { showUserMenu = false; onNavigateToSettings() }
                             )
                             DropdownMenuItem(
                                 text = { Text("Esci") },
