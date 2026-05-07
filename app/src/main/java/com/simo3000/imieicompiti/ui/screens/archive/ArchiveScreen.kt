@@ -13,8 +13,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.simo3000.imieicompiti.ui.components.DaySection
+import com.simo3000.imieicompiti.data.api.Task
+import com.simo3000.imieicompiti.ui.components.DaySectionHeader
+import com.simo3000.imieicompiti.ui.components.TaskCard
 import java.time.LocalDate
+
+private sealed interface AListItem {
+    data class Header(val dateKey: String, val doneCount: Int, val totalCount: Int) : AListItem()
+    data class Row(val task: Task) : AListItem()
+    data class Gap(val id: String) : AListItem()
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -23,29 +31,37 @@ fun ArchiveScreen(
     viewModel: ArchiveViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val today   = LocalDate.now().toString()
+    val today   = remember { LocalDate.now().toString() }
 
-    // Solo compiti passati
-    val pastTasks = uiState.tasks.filter { task ->
-        val d = try { task.date.substring(0, 10) } catch (e: Exception) { "" }
-        d < today
-    }
-
-    // Ricerca
-    val filtered = if (uiState.searchQuery.isBlank()) pastTasks else {
-        val q = uiState.searchQuery.lowercase()
-        pastTasks.filter {
-            it.subject.lowercase().contains(q) ||
-                    it.category.lowercase().contains(q) ||
-                    it.description.lowercase().contains(q)
+    val flatItems by remember {
+        derivedStateOf {
+            val state = uiState
+            val pastTasks = state.tasks.filter { task ->
+                task.date.take(10) < today
+            }
+            val filtered = if (state.searchQuery.isBlank()) pastTasks else {
+                val q = state.searchQuery.lowercase()
+                pastTasks.filter {
+                    it.subject.lowercase().contains(q)  ||
+                            it.category.lowercase().contains(q) ||
+                            it.description.lowercase().contains(q)
+                }
+            }
+            val grouped = filtered
+                .groupBy { it.date.take(10) }
+                .toSortedMap(reverseOrder())
+            val dates = grouped.keys.toList()
+            buildList {
+                dates.forEachIndexed { idx, dateKey ->
+                    if (idx > 0) add(AListItem.Gap("gap_$dateKey"))
+                    val tasks = grouped[dateKey] ?: emptyList()
+                    val done  = tasks.count { it.completed }
+                    add(AListItem.Header(dateKey, done, tasks.size))
+                    tasks.forEach { task -> add(AListItem.Row(task)) }
+                }
+            }
         }
     }
-
-    // Raggruppa per data — ordine decrescente (più recente prima)
-    val grouped     = filtered
-        .groupBy { try { it.date.substring(0, 10) } catch (e: Exception) { "" } }
-        .toSortedMap(reverseOrder())
-    val sortedDates = grouped.keys.toList()
 
     Scaffold(
         topBar = {
@@ -53,21 +69,18 @@ fun ArchiveScreen(
                 title = { Text("Archivio", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Indietro")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Indietro")
                     }
                 },
                 actions = {
                     OutlinedTextField(
-                        value = uiState.searchQuery,
+                        value         = uiState.searchQuery,
                         onValueChange = { viewModel.setSearchQuery(it) },
-                        placeholder = { Text("Cerca...", fontSize = 14.sp) },
-                        singleLine = true,
-                        modifier = Modifier
-                            .padding(end = 12.dp)
-                            .height(48.dp)
-                            .width(170.dp),
-                        textStyle = androidx.compose.ui.text.TextStyle(fontSize = 14.sp),
-                        colors = OutlinedTextFieldDefaults.colors(
+                        placeholder   = { Text("Cerca...", fontSize = 14.sp) },
+                        singleLine    = true,
+                        modifier      = Modifier.padding(end = 12.dp).height(48.dp).width(170.dp),
+                        textStyle     = androidx.compose.ui.text.TextStyle(fontSize = 14.sp),
+                        colors        = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor   = MaterialTheme.colorScheme.primary,
                             unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)
                         )
@@ -79,12 +92,10 @@ fun ArchiveScreen(
             )
         }
     ) { padding ->
+
         when {
             uiState.isLoading -> {
-                Box(
-                    modifier = Modifier.fillMaxSize().padding(padding),
-                    contentAlignment = Alignment.Center
-                ) {
+                Box(Modifier.fillMaxSize().padding(padding), Alignment.Center) {
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -96,10 +107,7 @@ fun ArchiveScreen(
             }
 
             uiState.error != null -> {
-                Box(
-                    modifier = Modifier.fillMaxSize().padding(padding),
-                    contentAlignment = Alignment.Center
-                ) {
+                Box(Modifier.fillMaxSize().padding(padding), Alignment.Center) {
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -111,29 +119,26 @@ fun ArchiveScreen(
                 }
             }
 
-            sortedDates.isEmpty() -> {
-                Box(
-                    modifier = Modifier.fillMaxSize().padding(padding),
-                    contentAlignment = Alignment.Center
-                ) {
+            flatItems.isEmpty() -> {
+                Box(Modifier.fillMaxSize().padding(padding), Alignment.Center) {
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                         modifier = Modifier.padding(32.dp)
                     ) {
                         Text(
-                            text = if (uiState.searchQuery.isNotBlank())
+                            text       = if (uiState.searchQuery.isNotBlank())
                                 "Nessun risultato" else "Archivio vuoto",
                             fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color      = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Text(
-                            text = if (uiState.searchQuery.isNotBlank())
+                            text     = if (uiState.searchQuery.isNotBlank())
                                 "Prova con un termine diverso."
                             else
                                 "I compiti passati appariranno qui.",
                             fontSize = 13.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                            color    = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                         )
                     }
                 }
@@ -141,18 +146,40 @@ fun ArchiveScreen(
 
             else -> {
                 LazyColumn(
-                    modifier = Modifier.fillMaxSize().padding(padding),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(24.dp)
+                    modifier       = Modifier.fillMaxSize().padding(padding),
+                    contentPadding = PaddingValues(16.dp)
                 ) {
-                    items(sortedDates) { dateKey ->
-                        DaySection(
-                            dateKey  = dateKey,
-                            tasks    = grouped[dateKey] ?: emptyList(),
-                            onToggle = { id, completed -> viewModel.toggleTask(id, completed) },
-                            onEdit   = { /* archivio read-only per edit */ },
-                            onDelete = { id -> viewModel.deleteTask(id) }
-                        )
+                    items(
+                        items       = flatItems,
+                        key         = { item ->
+                            when (item) {
+                                is AListItem.Header -> "h_${item.dateKey}"
+                                is AListItem.Row    -> item.task.id
+                                is AListItem.Gap    -> item.id
+                            }
+                        },
+                        contentType = { item ->
+                            when (item) {
+                                is AListItem.Header -> "header"
+                                is AListItem.Row    -> "row"
+                                is AListItem.Gap    -> "gap"
+                            }
+                        }
+                    ) { item ->
+                        when (item) {
+                            is AListItem.Header -> DaySectionHeader(
+                                dateKey    = item.dateKey,
+                                doneCount  = item.doneCount,
+                                totalCount = item.totalCount
+                            )
+                            is AListItem.Row -> TaskCard(
+                                task     = item.task,
+                                onToggle = { id, completed -> viewModel.toggleTask(id, completed) },
+                                onEdit   = {},
+                                onDelete = { id -> viewModel.deleteTask(id) }
+                            )
+                            is AListItem.Gap -> Spacer(modifier = Modifier.height(20.dp))
+                        }
                     }
                 }
             }

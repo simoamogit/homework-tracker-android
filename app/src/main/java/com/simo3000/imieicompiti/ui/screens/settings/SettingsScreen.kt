@@ -1,5 +1,6 @@
 package com.simo3000.imieicompiti.ui.screens.settings
 
+import android.annotation.SuppressLint
 import androidx.activity.ComponentActivity
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -19,7 +20,9 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.simo3000.imieicompiti.ui.components.AppButton
 import com.simo3000.imieicompiti.ui.theme.ThemeViewModel
+import com.simo3000.imieicompiti.ui.theme.ThemeMode
 
+@SuppressLint("ContextCastToActivity")
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun SettingsScreen(
@@ -31,7 +34,7 @@ fun SettingsScreen(
     // ThemeViewModel scoped all'Activity — condiviso con MainActivity
     val activity     = LocalContext.current as ComponentActivity
     val themeViewModel: ThemeViewModel = viewModel(activity)
-    val isDark       by themeViewModel.isDark.collectAsState()
+    val themeMode by themeViewModel.themeMode.collectAsState()
 
     var newSubject   by remember { mutableStateOf("") }
     var newCategory  by remember { mutableStateOf("") }
@@ -80,33 +83,22 @@ fun SettingsScreen(
 
             // ── ASPETTO ──────────────────────────────────────
             SettingsSection(title = "Aspetto") {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column {
-                        Text(
-                            text = "Tema scuro",
-                            fontSize = 14.sp,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        Text(
-                            text = if (isDark) "Attivo" else "Non attivo",
-                            fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                Text(
+                    text     = "Tema",
+                    fontSize = 14.sp,
+                    color    = MaterialTheme.colorScheme.onSurface
+                )
+                SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                    val options = listOf(ThemeMode.SYSTEM, ThemeMode.LIGHT, ThemeMode.DARK)
+                    val labels  = listOf("Sistema", "Chiaro", "Scuro")
+                    options.forEachIndexed { index, mode ->
+                        SegmentedButton(
+                            selected = themeMode == mode,
+                            onClick  = { themeViewModel.setThemeMode(mode) },
+                            shape    = SegmentedButtonDefaults.itemShape(index = index, count = options.size),
+                            label    = { Text(labels[index], fontSize = 13.sp) }
                         )
                     }
-                    Switch(
-                        checked = isDark,
-                        onCheckedChange = { themeViewModel.toggle() },
-                        colors = SwitchDefaults.colors(
-                            checkedThumbColor   = MaterialTheme.colorScheme.onPrimary,
-                            checkedTrackColor   = MaterialTheme.colorScheme.primary,
-                            uncheckedThumbColor = MaterialTheme.colorScheme.outline,
-                            uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant
-                        )
-                    )
                 }
             }
 

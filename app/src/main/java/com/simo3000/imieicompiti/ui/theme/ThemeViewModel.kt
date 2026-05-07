@@ -7,16 +7,21 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
+enum class ThemeMode { SYSTEM, LIGHT, DARK }
+
 class ThemeViewModel(application: Application) : AndroidViewModel(application) {
 
     private val prefs = application.getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
 
-    private val _isDark = MutableStateFlow(prefs.getBoolean("dark_mode", false))
-    val isDark: StateFlow<Boolean> = _isDark.asStateFlow()
+    private val _themeMode = MutableStateFlow(
+        ThemeMode.valueOf(
+            prefs.getString("theme_mode", ThemeMode.SYSTEM.name) ?: ThemeMode.SYSTEM.name
+        )
+    )
+    val themeMode: StateFlow<ThemeMode> = _themeMode.asStateFlow()
 
-    fun toggle() {
-        val new = !_isDark.value
-        _isDark.value = new
-        prefs.edit().putBoolean("dark_mode", new).apply()
+    fun setThemeMode(mode: ThemeMode) {
+        _themeMode.value = mode
+        prefs.edit().putString("theme_mode", mode.name).apply()
     }
 }
