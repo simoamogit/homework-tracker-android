@@ -1,5 +1,6 @@
 package com.simo3000.imieicompiti.ui.screens.dashboard
 
+import androidx.compose.runtime.Immutable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -20,11 +21,11 @@ import com.simo3000.imieicompiti.ui.components.EditTaskDialog
 import com.simo3000.imieicompiti.ui.components.TaskCard
 import java.time.LocalDate
 
-// ── Lista appiattita ────────────────────────────────────────────────────────
+@Immutable
 private sealed interface DListItem {
-    data class Header(val dateKey: String, val doneCount: Int, val totalCount: Int) : DListItem()
-    data class Row(val task: Task) : DListItem()
-    data class Gap(val id: String) : DListItem()
+    @Immutable data class Header(val dateKey: String, val doneCount: Int, val totalCount: Int) : DListItem
+    @Immutable data class Row(val task: Task) : DListItem
+    @Immutable data class Gap(val id: String) : DListItem
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -41,24 +42,20 @@ fun DashboardScreen(
     var showAddDialog by remember { mutableStateOf(false) }
     var showUserMenu  by remember { mutableStateOf(false) }
 
-    // Calcolato una volta — non cambia durante la sessione
     val today = remember { LocalDate.now().toString() }
 
-    // ── Lista appiattita con derivedStateOf ────────────────────────────────
-    // Si ricalcola solo quando uiState cambia davvero, non ad ogni recomposition
+    // Ricalcola SOLO quando uiState cambia, non ad ogni recomposition
     val flatItems by remember {
         derivedStateOf {
             val state = uiState
 
-            val presentTasks = state.tasks.filter { task ->
-                task.date.take(10) >= today
-            }
+            val presentTasks = state.tasks.filter { it.date.take(10) >= today }
 
             val filtered = if (state.searchQuery.isBlank()) presentTasks else {
                 val q = state.searchQuery.lowercase()
                 presentTasks.filter {
-                    it.subject.lowercase().contains(q)   ||
-                            it.category.lowercase().contains(q)  ||
+                    it.subject.lowercase().contains(q)  ||
+                            it.category.lowercase().contains(q) ||
                             it.description.lowercase().contains(q)
                 }
             }
@@ -99,50 +96,47 @@ fun DashboardScreen(
                             .height(48.dp)
                             .width(200.dp),
                         textStyle = androidx.compose.ui.text.TextStyle(fontSize = 14.sp),
-                        colors = OutlinedTextFieldDefaults.colors(
+                        colors    = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor   = MaterialTheme.colorScheme.primary,
                             unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)
                         )
                     )
                 },
                 actions = {
-                    // Archivio
                     IconButton(onClick = onNavigateToArchive) {
                         Icon(
-                            imageVector       = Icons.Default.Archive,
+                            Icons.Default.Archive,
                             contentDescription = "Archivio",
-                            tint              = MaterialTheme.colorScheme.onSurfaceVariant
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                    // Occhio
                     IconButton(onClick = { viewModel.toggleHideCompletedDays() }) {
                         Icon(
-                            imageVector       = if (uiState.hideCompletedDays)
+                            imageVector = if (uiState.hideCompletedDays)
                                 Icons.Default.VisibilityOff else Icons.Default.Visibility,
                             contentDescription = "Nascondi giorni completati",
-                            tint              = if (uiState.hideCompletedDays)
+                            tint = if (uiState.hideCompletedDays)
                                 MaterialTheme.colorScheme.primary
                             else
                                 MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                    // Menu utente
                     Box {
                         IconButton(onClick = { showUserMenu = true }) {
                             Icon(
-                                imageVector       = Icons.Default.AccountCircle,
+                                Icons.Default.AccountCircle,
                                 contentDescription = "Account",
-                                modifier          = Modifier.size(28.dp)
+                                modifier = Modifier.size(28.dp)
                             )
                         }
                         DropdownMenu(
-                            expanded          = showUserMenu,
-                            onDismissRequest  = { showUserMenu = false }
+                            expanded         = showUserMenu,
+                            onDismissRequest = { showUserMenu = false }
                         ) {
                             DropdownMenuItem(
                                 text    = {
                                     Text(
-                                        text     = viewModel.getEmail() ?: "",
+                                        viewModel.getEmail() ?: "",
                                         fontSize = 12.sp,
                                         color    = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
@@ -152,9 +146,9 @@ fun DashboardScreen(
                             )
                             HorizontalDivider()
                             DropdownMenuItem(
-                                text         = { Text("Impostazioni") },
-                                leadingIcon  = { Icon(Icons.Default.Settings, null) },
-                                onClick      = { showUserMenu = false; onNavigateToSettings() }
+                                text        = { Text("Impostazioni") },
+                                leadingIcon = { Icon(Icons.Default.Settings, null) },
+                                onClick     = { showUserMenu = false; onNavigateToSettings() }
                             )
                             DropdownMenuItem(
                                 text        = { Text("Esci") },
@@ -187,10 +181,7 @@ fun DashboardScreen(
 
         when {
             uiState.isLoading -> {
-                Box(
-                    modifier        = Modifier.fillMaxSize().padding(padding),
-                    contentAlignment = Alignment.Center
-                ) {
+                Box(Modifier.fillMaxSize().padding(padding), Alignment.Center) {
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -202,10 +193,7 @@ fun DashboardScreen(
             }
 
             uiState.error != null -> {
-                Box(
-                    modifier        = Modifier.fillMaxSize().padding(padding),
-                    contentAlignment = Alignment.Center
-                ) {
+                Box(Modifier.fillMaxSize().padding(padding), Alignment.Center) {
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -218,23 +206,20 @@ fun DashboardScreen(
             }
 
             flatItems.isEmpty() -> {
-                Box(
-                    modifier        = Modifier.fillMaxSize().padding(padding),
-                    contentAlignment = Alignment.Center
-                ) {
+                Box(Modifier.fillMaxSize().padding(padding), Alignment.Center) {
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                         modifier            = Modifier.padding(32.dp)
                     ) {
                         Icon(
-                            imageVector       = Icons.Default.CheckCircle,
+                            Icons.Default.CheckCircle,
                             contentDescription = null,
-                            tint              = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f),
-                            modifier          = Modifier.size(56.dp)
+                            tint     = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f),
+                            modifier = Modifier.size(56.dp)
                         )
                         Text(
-                            text       = when {
+                            text = when {
                                 uiState.searchQuery.isNotBlank() -> "Nessun risultato"
                                 uiState.hideCompletedDays        -> "Tutto completato"
                                 else                             -> "Nessun compito"
@@ -243,7 +228,7 @@ fun DashboardScreen(
                             color      = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Text(
-                            text     = when {
+                            text = when {
                                 uiState.searchQuery.isNotBlank() -> "Prova con un termine diverso."
                                 uiState.hideCompletedDays        -> "Tutti i giorni sono completati."
                                 else                             -> "Aggiungi un compito con il pulsante +"
@@ -256,10 +241,9 @@ fun DashboardScreen(
             }
 
             else -> {
-                // ── Lista appiattita: ogni item è lazy ────────────────────
                 LazyColumn(
-                    modifier        = Modifier.fillMaxSize().padding(padding),
-                    contentPadding  = PaddingValues(
+                    modifier       = Modifier.fillMaxSize().padding(padding),
+                    contentPadding = PaddingValues(
                         start  = 16.dp,
                         end    = 16.dp,
                         top    = 16.dp,
@@ -267,8 +251,8 @@ fun DashboardScreen(
                     )
                 ) {
                     items(
-                        items = flatItems,
-                        key   = { item ->
+                        items       = flatItems,
+                        key         = { item ->
                             when (item) {
                                 is DListItem.Header -> "h_${item.dateKey}"
                                 is DListItem.Row    -> item.task.id
@@ -277,9 +261,9 @@ fun DashboardScreen(
                         },
                         contentType = { item ->
                             when (item) {
-                                is DListItem.Header -> "header"
-                                is DListItem.Row    -> "row"
-                                is DListItem.Gap    -> "gap"
+                                is DListItem.Header -> 0
+                                is DListItem.Row    -> 1
+                                is DListItem.Gap    -> 2
                             }
                         }
                     ) { item ->
@@ -291,11 +275,11 @@ fun DashboardScreen(
                             )
                             is DListItem.Row -> TaskCard(
                                 task     = item.task,
-                                onToggle = { id, completed -> viewModel.toggleTask(id, completed) },
+                                onToggle = { id, c -> viewModel.toggleTask(id, c) },
                                 onEdit   = { task -> taskToEdit = task },
                                 onDelete = { id -> viewModel.deleteTask(id) }
                             )
-                            is DListItem.Gap -> Spacer(modifier = Modifier.height(20.dp))
+                            is DListItem.Gap -> Spacer(Modifier.height(20.dp))
                         }
                     }
                 }

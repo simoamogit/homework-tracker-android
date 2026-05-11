@@ -83,11 +83,7 @@ fun SettingsScreen(
 
             // ── ASPETTO ──────────────────────────────────────
             SettingsSection(title = "Aspetto") {
-                Text(
-                    text     = "Tema",
-                    fontSize = 14.sp,
-                    color    = MaterialTheme.colorScheme.onSurface
-                )
+                Text("Tema", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface)
                 SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
                     val options = listOf(ThemeMode.SYSTEM, ThemeMode.LIGHT, ThemeMode.DARK)
                     val labels  = listOf("Sistema", "Chiaro", "Scuro")

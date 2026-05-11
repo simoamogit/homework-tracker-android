@@ -1,5 +1,6 @@
 package com.simo3000.imieicompiti.ui.screens.archive
 
+import androidx.compose.runtime.Immutable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -18,10 +19,11 @@ import com.simo3000.imieicompiti.ui.components.DaySectionHeader
 import com.simo3000.imieicompiti.ui.components.TaskCard
 import java.time.LocalDate
 
+@Immutable
 private sealed interface AListItem {
-    data class Header(val dateKey: String, val doneCount: Int, val totalCount: Int) : AListItem()
-    data class Row(val task: Task) : AListItem()
-    data class Gap(val id: String) : AListItem()
+    @Immutable data class Header(val dateKey: String, val doneCount: Int, val totalCount: Int) : AListItem
+    @Immutable data class Row(val task: Task) : AListItem
+    @Immutable data class Gap(val id: String) : AListItem
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -36,10 +38,8 @@ fun ArchiveScreen(
     val flatItems by remember {
         derivedStateOf {
             val state = uiState
-            val pastTasks = state.tasks.filter { task ->
-                task.date.take(10) < today
-            }
-            val filtered = if (state.searchQuery.isBlank()) pastTasks else {
+            val pastTasks = state.tasks.filter { it.date.take(10) < today }
+            val filtered  = if (state.searchQuery.isBlank()) pastTasks else {
                 val q = state.searchQuery.lowercase()
                 pastTasks.filter {
                     it.subject.lowercase().contains(q)  ||
@@ -50,9 +50,8 @@ fun ArchiveScreen(
             val grouped = filtered
                 .groupBy { it.date.take(10) }
                 .toSortedMap(reverseOrder())
-            val dates = grouped.keys.toList()
             buildList {
-                dates.forEachIndexed { idx, dateKey ->
+                grouped.keys.toList().forEachIndexed { idx, dateKey ->
                     if (idx > 0) add(AListItem.Gap("gap_$dateKey"))
                     val tasks = grouped[dateKey] ?: emptyList()
                     val done  = tasks.count { it.completed }
@@ -92,7 +91,6 @@ fun ArchiveScreen(
             )
         }
     ) { padding ->
-
         when {
             uiState.isLoading -> {
                 Box(Modifier.fillMaxSize().padding(padding), Alignment.Center) {
@@ -105,45 +103,38 @@ fun ArchiveScreen(
                     }
                 }
             }
-
             uiState.error != null -> {
                 Box(Modifier.fillMaxSize().padding(padding), Alignment.Center) {
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(12.dp),
-                        modifier = Modifier.padding(24.dp)
+                        modifier            = Modifier.padding(24.dp)
                     ) {
                         Text(uiState.error!!, color = MaterialTheme.colorScheme.error)
                         Button(onClick = { viewModel.loadTasks() }) { Text("Riprova") }
                     }
                 }
             }
-
             flatItems.isEmpty() -> {
                 Box(Modifier.fillMaxSize().padding(padding), Alignment.Center) {
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.padding(32.dp)
+                        modifier            = Modifier.padding(32.dp)
                     ) {
                         Text(
-                            text       = if (uiState.searchQuery.isNotBlank())
-                                "Nessun risultato" else "Archivio vuoto",
+                            text       = if (uiState.searchQuery.isNotBlank()) "Nessun risultato" else "Archivio vuoto",
                             fontWeight = FontWeight.SemiBold,
                             color      = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Text(
-                            text     = if (uiState.searchQuery.isNotBlank())
-                                "Prova con un termine diverso."
-                            else
-                                "I compiti passati appariranno qui.",
+                            text     = if (uiState.searchQuery.isNotBlank()) "Prova con un termine diverso." else "I compiti passati appariranno qui.",
                             fontSize = 13.sp,
                             color    = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                         )
                     }
                 }
             }
-
             else -> {
                 LazyColumn(
                     modifier       = Modifier.fillMaxSize().padding(padding),
@@ -160,9 +151,9 @@ fun ArchiveScreen(
                         },
                         contentType = { item ->
                             when (item) {
-                                is AListItem.Header -> "header"
-                                is AListItem.Row    -> "row"
-                                is AListItem.Gap    -> "gap"
+                                is AListItem.Header -> 0
+                                is AListItem.Row    -> 1
+                                is AListItem.Gap    -> 2
                             }
                         }
                     ) { item ->
@@ -174,11 +165,11 @@ fun ArchiveScreen(
                             )
                             is AListItem.Row -> TaskCard(
                                 task     = item.task,
-                                onToggle = { id, completed -> viewModel.toggleTask(id, completed) },
+                                onToggle = { id, c -> viewModel.toggleTask(id, c) },
                                 onEdit   = {},
                                 onDelete = { id -> viewModel.deleteTask(id) }
                             )
-                            is AListItem.Gap -> Spacer(modifier = Modifier.height(20.dp))
+                            is AListItem.Gap -> Spacer(Modifier.height(20.dp))
                         }
                     }
                 }

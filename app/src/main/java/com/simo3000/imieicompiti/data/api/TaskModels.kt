@@ -1,5 +1,8 @@
 package com.simo3000.imieicompiti.data.api
 
+import androidx.compose.runtime.Immutable
+
+@Immutable
 data class Task(
     val id: String,
     val user_id: String,
@@ -25,9 +28,7 @@ data class UpdateTaskRequest(
     val description: String
 )
 
-data class ToggleTaskRequest(
-    val completed: Boolean
-)
+data class ToggleTaskRequest(val completed: Boolean)
 
 data class DeleteTaskResponse(
     val message: String,

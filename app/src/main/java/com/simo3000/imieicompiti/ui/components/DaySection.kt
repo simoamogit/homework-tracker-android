@@ -22,10 +22,7 @@ fun formatDateLabel(dateStr: String): String {
     } catch (e: Exception) { dateStr }
 }
 
-/**
- * Solo header (data + counter + progress bar).
- * Usato dalla Dashboard nella LazyColumn appiattita.
- */
+/** Header standalone — usato nella LazyColumn appiattita di Dashboard e Archive */
 @Composable
 fun DaySectionHeader(
     dateKey:    String,
@@ -41,7 +38,7 @@ fun DaySectionHeader(
         verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier              = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment     = Alignment.CenterVertically
         ) {
@@ -73,9 +70,7 @@ fun DaySectionHeader(
     }
 }
 
-/**
- * Sezione completa (header + lista) — usato nell'Archivio.
- */
+/** Sezione completa con lista — non più usata in Dashboard, mantenuta per compatibilità */
 @Composable
 fun DaySection(
     dateKey:  String,
@@ -86,19 +81,13 @@ fun DaySection(
 ) {
     val doneCount  = tasks.count { it.completed }
     val totalCount = tasks.size
-
     Column(
-        modifier = Modifier.fillMaxWidth(),
+        modifier            = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         DaySectionHeader(dateKey = dateKey, doneCount = doneCount, totalCount = totalCount)
         tasks.forEach { task ->
-            TaskCard(
-                task     = task,
-                onToggle = onToggle,
-                onEdit   = onEdit,
-                onDelete = onDelete
-            )
+            TaskCard(task = task, onToggle = onToggle, onEdit = onEdit, onDelete = onDelete)
         }
     }
 }
